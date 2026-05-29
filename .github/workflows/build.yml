@@ -1,0 +1,348 @@
+# ============================================================
+# Prima Multi Seat - GitHub Actions CI/CD Pipeline
+# Builds Release x64, creates installer and portable ZIP
+# Triggers: push to main, pull requests, manual dispatch
+# ============================================================
+
+name: Build Prima Multi Seat
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create GitHub Release'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  BUILD_CONFIG: Release
+  BUILD_PLATFORM: x64
+  DOTNET_VERSION: '8.0.x'
+  VS_TOOLS: 'v143'
+
+jobs:
+  # ╔══════════════════════════════════════════════════════╗
+  # ║  BUILD PRIMACORE (C++ / Win32)                       ║
+  # ╚══════════════════════════════════════════════════════╝
+  build-core:
+    name: Build PrimaCore (C++)
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v2
+      with:
+        msbuild-architecture: x64
+
+    - name: Cache MSBuild
+      uses: actions/cache@v4
+      with:
+        path: PrimaCore/Build/Intermediate
+        key: primacore-intermediate-${{ hashFiles('PrimaCore/**/*.cpp', 'PrimaCore/**/*.h') }}
+
+    - name: Build PrimaCore (Release x64)
+      working-directory: PrimaCore
+      run: |
+        msbuild PrimaCore.vcxproj `
+          /p:Configuration=Release `
+          /p:Platform=x64 `
+          /p:PlatformToolset=v143 `
+          /p:WindowsTargetPlatformVersion=10.0 `
+          /maxcpucount `
+          /verbosity:minimal `
+          /nologo
+
+    - name: Verify PrimaMultiSeat.exe exists
+      run: |
+        if (Test-Path "Build\Release\PrimaMultiSeat.exe") {
+          Write-Host "[OK] PrimaMultiSeat.exe built successfully"
+          Get-Item "Build\Release\PrimaMultiSeat.exe" | Select-Object Name, Length, LastWriteTime
+        } else {
+          Write-Error "[FAIL] PrimaMultiSeat.exe not found"
+          exit 1
+        }
+
+    - name: Upload PrimaCore artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: primacore-release
+        path: Build/Release/PrimaMultiSeat.exe
+        retention-days: 7
+
+  # ╔══════════════════════════════════════════════════════╗
+  # ║  BUILD PRIMASERVICE (C# / .NET 8)                    ║
+  # ╚══════════════════════════════════════════════════════╝
+  build-service:
+    name: Build PrimaService (.NET 8)
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore NuGet packages
+      working-directory: PrimaService
+      run: dotnet restore
+
+    - name: Build PrimaService (Release x64)
+      working-directory: PrimaService
+      run: |
+        dotnet publish `
+          -c Release `
+          -r win-x64 `
+          --self-contained false `
+          -o ..\Build\Release `
+          /p:PublishSingleFile=true `
+          /p:IncludeNativeLibrariesForSelfExtract=true
+
+    - name: Verify PrimaService.exe
+      run: |
+        if (Test-Path "Build\Release\PrimaService.exe") {
+          Write-Host "[OK] PrimaService.exe built"
+        } else {
+          Write-Error "[FAIL] PrimaService.exe not found"
+          exit 1
+        }
+
+    - name: Upload PrimaService artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: primaservice-release
+        path: Build/Release/PrimaService.exe
+        retention-days: 7
+
+  # ╔══════════════════════════════════════════════════════╗
+  # ║  BUILD PRIMAUI (C# / WPF / .NET 8)                  ║
+  # ╚══════════════════════════════════════════════════════╝
+  build-ui:
+    name: Build PrimaUI (WPF .NET 8)
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore NuGet packages
+      working-directory: PrimaUI
+      run: dotnet restore
+
+    - name: Build PrimaUI (Release x64)
+      working-directory: PrimaUI
+      run: |
+        dotnet publish `
+          -c Release `
+          -r win-x64 `
+          --self-contained false `
+          -o ..\Build\Release `
+          /p:PublishSingleFile=true
+
+    - name: Upload PrimaUI artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: primaui-release
+        path: Build/Release/PrimaUI.exe
+        retention-days: 7
+
+  # ╔══════════════════════════════════════════════════════╗
+  # ║  PACKAGE: INSTALLER + PORTABLE ZIP                   ║
+  # ╚══════════════════════════════════════════════════════╝
+  package:
+    name: Package (Installer + Portable ZIP)
+    runs-on: windows-latest
+    needs: [build-core, build-service, build-ui]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download all build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: Build/Release
+        merge-multiple: true
+
+    - name: Copy support files
+      run: |
+        New-Item -ItemType Directory -Force -Path "Build\Release\logs"
+        Copy-Item "config.json"                    "Build\Release\"
+        Copy-Item "README.md"                      "Build\Release\README.txt"
+        Copy-Item "Scripts\start-prima.bat"       "Build\Release\"
+        Copy-Item "Scripts\stop-prima.bat"        "Build\Release\"
+        Copy-Item "Scripts\install-service.bat"   "Build\Release\"
+        Copy-Item "Scripts\uninstall-service.bat" "Build\Release\"
+
+    - name: List build artifacts
+      run: |
+        Write-Host "=== Build/Release Contents ==="
+        Get-ChildItem "Build\Release" -Recurse | ForEach-Object {
+          Write-Host "  $($_.FullName.Replace((Get-Location).Path + '\', ''))"
+        }
+
+    # ── Install Inno Setup ───────────────────────────────
+    - name: Install Inno Setup 6
+      run: |
+        $url = "https://jrsoftware.org/download.php/is.exe"
+        $out = "innosetup.exe"
+        Invoke-WebRequest -Uri $url -OutFile $out
+        Start-Process -Wait -FilePath $out -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
+        Write-Host "[OK] Inno Setup installed"
+
+    # ── Copy binaries for Inno Setup ─────────────────────
+    - name: Prepare installer staging
+      run: |
+        New-Item -ItemType Directory -Force -Path "Installer\Build"
+        Copy-Item "Build\Release\*" "Installer\Build\" -Recurse
+
+    # ── Build Installer ──────────────────────────────────
+    - name: Build PrimaMultiSeatSetup.exe
+      run: |
+        $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+        & $iscc "Installer\PrimaMultiSeatSetup.iss" /Q
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Inno Setup compilation failed"
+          exit 1
+        }
+        Write-Host "[OK] Installer created"
+
+    - name: Verify installer
+      run: |
+        if (Test-Path "Installer\Output\PrimaMultiSeatSetup.exe") {
+          $sz = (Get-Item "Installer\Output\PrimaMultiSeatSetup.exe").Length
+          Write-Host "[OK] PrimaMultiSeatSetup.exe - $([math]::Round($sz/1MB, 2)) MB"
+        } else {
+          Write-Error "Installer not found!"
+          exit 1
+        }
+
+    # ── Create Portable ZIP ──────────────────────────────
+    - name: Create PrimaMultiSeat_Portable.zip
+      run: |
+        $portableDir = "PrimaMultiSeat_Portable"
+        New-Item -ItemType Directory -Force -Path $portableDir
+        Copy-Item "Build\Release\*" $portableDir -Recurse
+        
+        # Add portable marker
+        Set-Content "$portableDir\PORTABLE.txt" "This is the portable version of Prima Multi Seat.
+        Configuration is saved locally in config.json.
+        Run PrimaMultiSeat.exe as Administrator to start.
+        Run PrimaUI.exe to open the dashboard."
+
+        Compress-Archive -Path $portableDir -DestinationPath "PrimaMultiSeat_Portable.zip" -CompressionLevel Optimal
+        $sz = (Get-Item "PrimaMultiSeat_Portable.zip").Length
+        Write-Host "[OK] Portable ZIP - $([math]::Round($sz/1MB, 2)) MB"
+
+    # ── Upload Final Artifacts ────────────────────────────
+    - name: Upload PrimaMultiSeatSetup.exe
+      uses: actions/upload-artifact@v4
+      with:
+        name: PrimaMultiSeatSetup
+        path: Installer/Output/PrimaMultiSeatSetup.exe
+        retention-days: 30
+
+    - name: Upload Portable ZIP
+      uses: actions/upload-artifact@v4
+      with:
+        name: PrimaMultiSeat_Portable
+        path: PrimaMultiSeat_Portable.zip
+        retention-days: 30
+
+    - name: Upload individual binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: PrimaMultiSeat_Binaries
+        path: |
+          Build/Release/PrimaMultiSeat.exe
+          Build/Release/PrimaService.exe
+          Build/Release/PrimaUI.exe
+          Build/Release/config.json
+          Build/Release/start-prima.bat
+          Build/Release/stop-prima.bat
+        retention-days: 30
+
+    # ── Build Summary ────────────────────────────────────
+    - name: Write Build Summary
+      run: |
+        $summary = @"
+        ## ✅ Prima Multi Seat Build Complete
+        
+        | Artifact | Status |
+        |---|---|
+        | PrimaMultiSeat.exe | ✅ Built |
+        | PrimaService.exe | ✅ Built |
+        | PrimaUI.exe | ✅ Built |
+        | PrimaMultiSeatSetup.exe | ✅ Created |
+        | PrimaMultiSeat_Portable.zip | ✅ Created |
+        
+        ### 📦 Download Artifacts
+        Go to **Actions → This Run → Artifacts** to download:
+        - `PrimaMultiSeatSetup` — Windows Installer
+        - `PrimaMultiSeat_Portable` — Portable ZIP
+        - `PrimaMultiSeat_Binaries` — Individual EXEs
+        "@
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
+  # ╔══════════════════════════════════════════════════════╗
+  # ║  RELEASE (on tag push or manual trigger)             ║
+  # ╚══════════════════════════════════════════════════════╝
+  release:
+    name: Create GitHub Release
+    runs-on: windows-latest
+    needs: [package]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.create_release == 'true'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: release-files
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: "Prima Multi Seat ${{ github.ref_name }}"
+        body: |
+          ## Prima Multi Seat Release
+          
+          ### 🚀 Installation
+          1. Download `PrimaMultiSeatSetup.exe`
+          2. Run as Administrator
+          3. Follow installer wizard
+          
+          ### 📦 Portable Version
+          Download `PrimaMultiSeat_Portable.zip`, extract, and run `PrimaMultiSeat.exe` as Administrator.
+          
+          ### 🔧 Requirements
+          - Windows 10 (1809+) or Windows 11 x64
+          - .NET 8.0 Runtime
+          - Administrator privileges
+          - 2 monitors, 2 keyboards, 2 mice
+          
+          ### ⚡ Failsafe
+          Press **Ctrl+Alt+P** at any time to disable all seat isolation.
+        files: |
+          release-files/PrimaMultiSeatSetup/PrimaMultiSeatSetup.exe
+          release-files/PrimaMultiSeat_Portable/PrimaMultiSeat_Portable.zip
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}

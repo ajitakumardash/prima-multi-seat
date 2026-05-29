@@ -1,0 +1,32 @@
+// Prima Multi Seat Resource File
+#include <windows.h>
+
+// Application Icon
+101 ICON "resources\prima.ico"
+
+// Version Info
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION    1,0,0,0
+PRODUCTVERSION 1,0,0,0
+FILEOS         VOS_NT_WINDOWS32
+FILETYPE       VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName",      "Prima Multi Seat"
+            VALUE "FileDescription",  "Prima Multi Seat Core Engine"
+            VALUE "FileVersion",      "1.0.0.0"
+            VALUE "InternalName",     "PrimaMultiSeat"
+            VALUE "LegalCopyright",   "2024 Prima Multi Seat"
+            VALUE "OriginalFilename", "PrimaMultiSeat.exe"
+            VALUE "ProductName",      "Prima Multi Seat"
+            VALUE "ProductVersion",   "1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

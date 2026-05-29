@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "general": {
+    "cursorSensitivity": 1.0,
+    "startMinimized": false,
+    "startWithWindows": false,
+    "enableAudioRouting": true,
+    "enableWindowIsolation": true,
+    "enableOverlayCursors": true,
+    "logPath": "logs\\prima.log"
+  },
+  "seats": [
+    {
+      "seatIndex": 0,
+      "keyboardPath": "",
+      "mousePath": "",
+      "monitorIndex": 0,
+      "audioDeviceId": "",
+      "cursorColor": 14430268,
+      "notes": "Seat 1 - Monitor 1, Keyboard 1, Mouse 1"
+    },
+    {
+      "seatIndex": 1,
+      "keyboardPath": "",
+      "mousePath": "",
+      "monitorIndex": 1,
+      "audioDeviceId": "",
+      "cursorColor": 3244284,
+      "notes": "Seat 2 - Monitor 2, Keyboard 2, Mouse 2"
+    }
+  ]
+}

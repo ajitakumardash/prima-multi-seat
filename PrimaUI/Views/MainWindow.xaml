@@ -1,0 +1,108 @@
+<Window x:Class="PrimaUI.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PrimaUI.ViewModels"
+        Title="Prima Multi Seat — Dashboard"
+        Width="1280" Height="800"
+        MinWidth="1024" MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BgPrimary}"
+        FontFamily="Segoe UI">
+
+  <Window.DataContext>
+    <vm:MainViewModel/>
+  </Window.DataContext>
+
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="220"/>     <!-- Sidebar -->
+      <ColumnDefinition Width="*"/>       <!-- Main Content -->
+    </Grid.ColumnDefinitions>
+
+    <!-- ══ SIDEBAR ════════════════════════════════════════ -->
+    <Border Grid.Column="0" Background="{StaticResource BgSidebar}"
+            BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0">
+      <StackPanel>
+        <!-- Logo -->
+        <Border Padding="20,24,20,16">
+          <StackPanel>
+            <TextBlock Text="PRIMA" FontSize="22" FontWeight="Bold"
+                       Foreground="{StaticResource Accent}"/>
+            <TextBlock Text="Multi Seat" FontSize="11"
+                       Foreground="{StaticResource TextSecondary}" Margin="0,-2,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <Separator Background="{StaticResource Border}" Margin="16,0"/>
+
+        <!-- Nav Items -->
+        <ListBox ItemsSource="{Binding NavItems}"
+                 SelectedItem="{Binding SelectedNav}"
+                 Margin="8,8,8,0">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Border Padding="12,10" CornerRadius="6" Cursor="Hand">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding Icon}" FontSize="16" Margin="0,0,10,0"
+                             VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding Label}" FontSize="13"
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Status Indicator -->
+        <Border Margin="16,16,16,0" Padding="12" CornerRadius="8"
+                Background="{StaticResource BgCard}">
+          <StackPanel>
+            <TextBlock Text="Engine Status" FontSize="11"
+                       Foreground="{StaticResource TextSecondary}"/>
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+              <Ellipse Width="8" Height="8"
+                       Fill="{Binding EngineStatusColor}"
+                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+              <TextBlock Text="{Binding EngineStatus}"
+                         FontWeight="SemiBold" FontSize="12"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Version -->
+        <TextBlock Text="v1.0.0" FontSize="10"
+                   Foreground="{StaticResource TextSecondary}"
+                   Margin="20,8,0,0" HorizontalAlignment="Left"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ══ MAIN CONTENT ═══════════════════════════════════ -->
+    <Grid Grid.Column="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="56"/>   <!-- Topbar -->
+        <RowDefinition Height="*"/>    <!-- Page Content -->
+      </Grid.RowDefinitions>
+
+      <!-- Topbar -->
+      <Border Grid.Row="0" Background="{StaticResource BgSecondary}"
+              BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+        <Grid Margin="24,0">
+          <TextBlock Text="{Binding PageTitle}" FontSize="16" FontWeight="SemiBold"
+                     VerticalAlignment="Center"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                      VerticalAlignment="Center">
+            <Button Content="⚡ Failsafe" Style="{StaticResource PrimaryButton}"
+                    Background="#7C3AED"
+                    Command="{Binding FailsafeCommand}" Margin="0,0,8,0"/>
+            <Button Content="🔄 Refresh" Style="{StaticResource PrimaryButton}"
+                    Background="{StaticResource BgCard}"
+                    Command="{Binding RefreshCommand}"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Page Content Frame -->
+      <Frame Grid.Row="1" x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
+    </Grid>
+  </Grid>
+</Window>

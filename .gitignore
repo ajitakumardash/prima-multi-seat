@@ -1,0 +1,60 @@
+# ── Build Outputs ────────────────────────────────────────
+Build/
+*.exe
+*.dll
+*.pdb
+*.obj
+*.ilk
+*.exp
+*.lib
+
+# ── Visual Studio ─────────────────────────────────────────
+.vs/
+*.user
+*.suo
+*.ncb
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+**/obj/
+**/bin/
+ipch/
+x64/
+x86/
+[Dd]ebug/
+[Rr]elease/
+[Bb]uild/
+[Ll]og/
+
+# ── .NET ─────────────────────────────────────────────────
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+*.nupkg
+
+# ── Installer Output ─────────────────────────────────────
+Installer/Output/
+*.zip
+
+# ── Logs ─────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Config (user-specific) ────────────────────────────────
+# Keep default config.json, exclude user-modified versions
+# config.json
+
+# ── IDE ──────────────────────────────────────────────────
+.idea/
+*.code-workspace
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ── Windows ──────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
