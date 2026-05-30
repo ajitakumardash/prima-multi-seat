@@ -7,7 +7,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,7 +25,6 @@ public class PrimaWorker : BackgroundService
     private Process? _coreProcess;
     private readonly string _installDir;
     private readonly string _coreExePath;
-    private readonly string _configPath;
     private int _restartCount = 0;
     private const int MaxRestarts = 5;
     private const int RestartDelayMs = 3000;
@@ -37,11 +35,9 @@ public class PrimaWorker : BackgroundService
 
     public PrimaWorker(ILogger<PrimaWorker> logger)
     {
-        _logger    = logger;
-        _installDir = Path.GetDirectoryName(
-            Assembly.GetExecutingAssembly().Location)!;
+        _logger      = logger;
+        _installDir  = AppContext.BaseDirectory;
         _coreExePath = Path.Combine(_installDir, "PrimaMultiSeat.exe");
-        _configPath  = Path.Combine(_installDir, "config.json");
     }
 
     // ── Service Entry ──────────────────────────────────────
