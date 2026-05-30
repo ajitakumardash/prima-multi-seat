@@ -2,6 +2,7 @@
 // Prima Multi Seat - Dashboard View Model
 // ============================================================
 
+using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
