@@ -4,12 +4,15 @@
 // handles device reconnect events via WMI.
 // ============================================================
 
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.ServiceProcess;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using System;                               // File, Path, Task, CancellationToken, Exception,
+                                            // EventArgs, IntPtr, Environment
+using System.Diagnostics;                   // Process, ProcessStartInfo
+using System.Reflection;                    // Assembly.GetExecutingAssembly()
+using System.Runtime.InteropServices;       // DllImport, StructLayout, LayoutKind
+using System.ServiceProcess;                // ServiceBase (referenced by ServiceStatus convention)
+using Microsoft.Extensions.Hosting;         // BackgroundService
+using Microsoft.Extensions.Logging;         // ILogger
+using Newtonsoft.Json;                      // JsonConvert (config deserialization)
 
 namespace PrimaService;
 
@@ -36,7 +39,7 @@ public class PrimaWorker : BackgroundService
     {
         _logger    = logger;
         _installDir = Path.GetDirectoryName(
-            System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+            Assembly.GetExecutingAssembly().Location)!;
         _coreExePath = Path.Combine(_installDir, "PrimaMultiSeat.exe");
         _configPath  = Path.Combine(_installDir, "config.json");
     }
