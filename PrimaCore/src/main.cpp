@@ -4,6 +4,18 @@
 // and WM_INPUT handler for Raw Input device routing.
 // ============================================================
 
+// FIX #1 — Added <shellapi.h>: required for NOTIFYICONDATA,
+//           Shell_NotifyIconW, ShellExecuteW, NIF_*, NIM_*
+// FIX #2 — wcscpy_s: corrected to 3-argument form
+//           wcscpy_s(dst, _countof(dst), src)
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <shellapi.h>           // FIX #1: was missing
+#include <memory>
+#include <vector>
+#include <string>
+
 #include "../include/Common.h"
 #include "../include/SeatManager.h"
 #include "../include/IPCServer.h"
@@ -194,7 +206,7 @@ bool InitTrayIcon(HWND hWnd, HINSTANCE hInst) {
     g_nid.uFlags           = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     g_nid.uCallbackMessage = WM_PRIMA_TRAY;
     g_nid.hIcon            = LoadIcon(hInst, MAKEINTRESOURCE(101));
-    wcscpy_s(g_nid.szTip, L"Prima Multi Seat");
+    wcscpy_s(g_nid.szTip, _countof(g_nid.szTip), L"Prima Multi Seat"); // FIX #2
     return Shell_NotifyIconW(NIM_ADD, &g_nid) != FALSE;
 }
 
@@ -204,14 +216,14 @@ void RemoveTrayIcon(HWND hWnd) {
 
 void ShowContextMenu(HWND hWnd) {
     HMENU hMenu = CreatePopupMenu();
-    AppendMenuW(hMenu, MF_STRING, 1, L"Open Dashboard");
+    AppendMenuW(hMenu, MF_STRING,    1, L"Open Dashboard");
     AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(hMenu, MF_STRING, 2, L"Start All Seats");
-    AppendMenuW(hMenu, MF_STRING, 3, L"Stop All Seats");
+    AppendMenuW(hMenu, MF_STRING,    2, L"Start All Seats");
+    AppendMenuW(hMenu, MF_STRING,    3, L"Stop All Seats");
     AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(hMenu, MF_STRING, 4, L"Failsafe Recovery");
+    AppendMenuW(hMenu, MF_STRING,    4, L"Failsafe Recovery");
     AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(hMenu, MF_STRING, 5, L"Exit");
+    AppendMenuW(hMenu, MF_STRING,    5, L"Exit");
 
     SetForegroundWindow(hWnd);
     POINT pt;
@@ -222,7 +234,6 @@ void ShowContextMenu(HWND hWnd) {
 
     switch (cmd) {
     case 1:
-        // Launch PrimaUI.exe
         ShellExecuteW(nullptr, L"open", L"PrimaUI.exe", nullptr, nullptr, SW_SHOW);
         break;
     case 2:
