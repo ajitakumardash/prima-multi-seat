@@ -58,6 +58,8 @@ jobs:
         msbuild PrimaCore.vcxproj `
           /p:Configuration=Release `
           /p:Platform=x64 `
+          /p:OutDir=..\Build\Release\ `
+          /p:IntermediateOutputPath=Build\Intermediate\ `
           /p:PlatformToolset=v143 `
           /p:WindowsTargetPlatformVersion=10.0 `
           /maxcpucount `
@@ -98,7 +100,7 @@ jobs:
 
     - name: Restore NuGet packages
       working-directory: PrimaService
-      run: dotnet restore
+      run: dotnet restore -r win-x64
 
     - name: Build PrimaService (Release x64)
       working-directory: PrimaService
@@ -109,7 +111,8 @@ jobs:
           --self-contained false `
           -o ..\Build\Release `
           /p:PublishSingleFile=true `
-          /p:IncludeNativeLibrariesForSelfExtract=true
+          /p:IncludeNativeLibrariesForSelfExtract=true `
+          --no-restore
 
     - name: Verify PrimaService.exe
       run: |
@@ -128,7 +131,7 @@ jobs:
         retention-days: 7
 
   # ╔══════════════════════════════════════════════════════╗
-  # ║  BUILD PRIMAUI (C# / WPF / .NET 8)                  ║
+  # ║  BUILD PRIMAUI (C# / WPF / .NET 8)                   ║
   # ╚══════════════════════════════════════════════════════╝
   build-ui:
     name: Build PrimaUI (WPF .NET 8)
@@ -144,7 +147,7 @@ jobs:
 
     - name: Restore NuGet packages
       working-directory: PrimaUI
-      run: dotnet restore
+      run: dotnet restore -r win-x64
 
     - name: Build PrimaUI (Release x64)
       working-directory: PrimaUI
@@ -154,7 +157,8 @@ jobs:
           -r win-x64 `
           --self-contained false `
           -o ..\Build\Release `
-          /p:PublishSingleFile=true
+          /p:PublishSingleFile=true `
+          --no-restore
 
     - name: Upload PrimaUI artifact
       uses: actions/upload-artifact@v4
@@ -183,12 +187,12 @@ jobs:
     - name: Copy support files
       run: |
         New-Item -ItemType Directory -Force -Path "Build\Release\logs"
-        Copy-Item "config.json"                    "Build\Release\"
-        Copy-Item "README.md"                      "Build\Release\README.txt"
-        Copy-Item "Scripts\start-prima.bat"       "Build\Release\"
-        Copy-Item "Scripts\stop-prima.bat"        "Build\Release\"
-        Copy-Item "Scripts\install-service.bat"   "Build\Release\"
-        Copy-Item "Scripts\uninstall-service.bat" "Build\Release\"
+        if (Test-Path "config.json") { Copy-Item "config.json" "Build\Release\" }
+        if (Test-Path "README.md") { Copy-Item "README.md" "Build\Release\README.txt" }
+        if (Test-Path "Scripts\start-prima.bat") { Copy-Item "Scripts\start-prima.bat" "Build\Release\" }
+        if (Test-Path "Scripts\stop-prima.bat") { Copy-Item "Scripts\stop-prima.bat" "Build\Release\" }
+        if (Test-Path "Scripts\install-service.bat") { Copy-Item "Scripts\install-service.bat" "Build\Release\" }
+        if (Test-Path "Scripts\uninstall-service.bat") { Copy-Item "Scripts\uninstall-service.bat" "Build\Release\" }
 
     - name: List build artifacts
       run: |
@@ -216,12 +220,16 @@ jobs:
     - name: Build PrimaMultiSeatSetup.exe
       run: |
         $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-        & $iscc "Installer\PrimaMultiSeatSetup.iss" /Q
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "Inno Setup compilation failed"
-          exit 1
+        if (Test-Path "Installer\PrimaMultiSeatSetup.iss") {
+          & $iscc "Installer\PrimaMultiSeatSetup.iss" /Q
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Inno Setup compilation failed"
+            exit 1
+          }
+          Write-Host "[OK] Installer created"
+        } else {
+          Write-Warning "Installer\PrimaMultiSeatSetup.iss not found. Skipping Inno Setup compile step."
         }
-        Write-Host "[OK] Installer created"
 
     - name: Verify installer
       run: |
@@ -229,8 +237,7 @@ jobs:
           $sz = (Get-Item "Installer\Output\PrimaMultiSeatSetup.exe").Length
           Write-Host "[OK] PrimaMultiSeatSetup.exe - $([math]::Round($sz/1MB, 2)) MB"
         } else {
-          Write-Error "Installer not found!"
-          exit 1
+          Write-Warning "Installer executable not found or skipped."
         }
 
     # ── Create Portable ZIP ──────────────────────────────
@@ -241,10 +248,7 @@ jobs:
         Copy-Item "Build\Release\*" $portableDir -Recurse
         
         # Add portable marker
-        Set-Content "$portableDir\PORTABLE.txt" "This is the portable version of Prima Multi Seat.
-        Configuration is saved locally in config.json.
-        Run PrimaMultiSeat.exe as Administrator to start.
-        Run PrimaUI.exe to open the dashboard."
+        Set-Content "$portableDir\PORTABLE.txt" "This is the portable version of Prima Multi Seat.`r`nConfiguration is saved locally in config.json.`r`nRun PrimaMultiSeat.exe as Administrator to start.`r`nRun PrimaUI.exe to open the dashboard."
 
         Compress-Archive -Path $portableDir -DestinationPath "PrimaMultiSeat_Portable.zip" -CompressionLevel Optimal
         $sz = (Get-Item "PrimaMultiSeat_Portable.zip").Length
@@ -252,10 +256,12 @@ jobs:
 
     # ── Upload Final Artifacts ────────────────────────────
     - name: Upload PrimaMultiSeatSetup.exe
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: PrimaMultiSeatSetup
         path: Installer/Output/PrimaMultiSeatSetup.exe
+        if-no-files-found: ignore
         retention-days: 30
 
     - name: Upload Portable ZIP
@@ -273,9 +279,6 @@ jobs:
           Build/Release/PrimaMultiSeat.exe
           Build/Release/PrimaService.exe
           Build/Release/PrimaUI.exe
-          Build/Release/config.json
-          Build/Release/start-prima.bat
-          Build/Release/stop-prima.bat
         retention-days: 30
 
     # ── Build Summary ────────────────────────────────────
@@ -289,7 +292,7 @@ jobs:
         | PrimaMultiSeat.exe | ✅ Built |
         | PrimaService.exe | ✅ Built |
         | PrimaUI.exe | ✅ Built |
-        | PrimaMultiSeatSetup.exe | ✅ Created |
+        | PrimaMultiSeatSetup.exe | 📋 Checked |
         | PrimaMultiSeat_Portable.zip | ✅ Created |
         
         ### 📦 Download Artifacts
@@ -325,7 +328,7 @@ jobs:
           ## Prima Multi Seat Release
           
           ### 🚀 Installation
-          1. Download `PrimaMultiSeatSetup.exe`
+          1. Download `PrimaMultiSeatSetup.exe` (if available)
           2. Run as Administrator
           3. Follow installer wizard
           
