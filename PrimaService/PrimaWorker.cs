@@ -4,15 +4,15 @@
 // handles device reconnect events via WMI.
 // ============================================================
 
-using System;                               // File, Path, Task, CancellationToken, Exception,
-                                            // EventArgs, IntPtr, Environment
-using System.Diagnostics;                   // Process, ProcessStartInfo
-using System.Reflection;                    // Assembly.GetExecutingAssembly()
-using System.Runtime.InteropServices;       // DllImport, StructLayout, LayoutKind
-using System.ServiceProcess;                // ServiceBase (referenced by ServiceStatus convention)
-using Microsoft.Extensions.Hosting;         // BackgroundService
-using Microsoft.Extensions.Logging;         // ILogger
-using Newtonsoft.Json;                      // JsonConvert (config deserialization)
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace PrimaService;
 
